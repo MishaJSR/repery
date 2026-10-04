@@ -1,0 +1,53 @@
+services:
+  postgres:
+    image: postgres:13-alpine
+    container_name: postgres-repetitor
+    env_file:
+      - ./backend/.production.env
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - home
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: backend-plans:latest
+    container_name: nest-backend
+    env_file:
+      - ./backend/.production.env
+    environment:
+      NODE_ENV: production
+      POSTGRES_HOST: postgres
+      DB_SYNCHRONIZE: "false"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "5000:5000"
+    networks:
+      - home
+
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: frontend-plans:latest
+    container_name: frontend
+    ports:
+      - "3000:80"
+    networks:
+      - home
+
+networks:
+  home:
+    driver: bridge
+
+volumes:
+  postgres_data:
